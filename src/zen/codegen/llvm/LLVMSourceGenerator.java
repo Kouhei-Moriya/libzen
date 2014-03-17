@@ -81,6 +81,7 @@ import zen.type.ZClassType;
 import zen.type.ZFuncType;
 import zen.type.ZGenericType;
 import zen.type.ZType;
+import zen.type.ZVarType;
 import zen.util.Field;
 import zen.util.LibZen;
 import zen.util.Var;
@@ -275,7 +276,10 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 		return false;
 	}
 	private String GetTypeExpr(ZType Type) {
-		if(Type.IsVarType()) {
+		if(Type instanceof ZVarType) {
+			return this.GetTypeExpr(Type.RefType);
+		}
+		else if(Type.IsVarType()) {
 			return "opaque";
 		}
 		else if(Type instanceof ZFuncType) {
@@ -677,11 +681,11 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 
 		@Var String ProtoSymbol = "@" + Node.ClassName() + ".Proto";
 		this.CurrentBuilder.AppendNewLine(ProtoSymbol);
-		this.HeaderBuilder.Append(" = ");
+		this.CurrentBuilder.Append(" = ");
 		if(!Node.IsExport) {
-			this.HeaderBuilder.Append("private ");
+			this.CurrentBuilder.Append("private ");
 		}
-		this.HeaderBuilder.Append("constant ");
+		this.CurrentBuilder.Append("constant ");
 		this.CurrentBuilder.Append(ClassSymbol);
 		this.CurrentBuilder.OpenIndent(" {");
 		if(!Node.SuperType().Equals(ZClassType._ObjectType)) {
@@ -805,7 +809,7 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 		@Var LLVMScope PushedScope = this.CurrentScope;
 		this.CurrentScope = new LLVMScope();
 
-		this.CurrentBuilder = this.InsertNewSourceBuilder();
+		this.CurrentBuilder = this.AppendNewSourceBuilder();
 
 		this.CurrentBuilder.AppendNewLine("define private ");
 		this.CurrentBuilder.Append(this.GetTypeExpr(Node.ReturnType()));
@@ -836,32 +840,36 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 		this.CurrentBuilder.CloseIndent("}");
 
 		if(Node.IsExport) {
-			if(!Node.FuncName().equals("main")) {
+			if(Node.FuncName().equals("main")) {
+				this.CurrentBuilder.AppendNewLine("define i32 @main (i32 %argc, i8** %argv)");
+				this.CurrentBuilder.OpenIndent(" {");
+				if(Node.ResolvedFuncType.GetFuncParamSize() != 0) {
+					this.CurrentBuilder.AppendNewLine("%_argc = zext i32 %argc to i64");
+				}
+				this.CurrentBuilder.AppendNewLine("call ");
+				this.CurrentBuilder.Append(this.GetTypeExpr(Node.ResolvedFuncType));
+				this.CurrentBuilder.Append(" ");
+				this.CurrentBuilder.Append(FuncName);
+				this.CurrentBuilder.Append(" (");
+				if(Node.ResolvedFuncType.GetFuncParamSize() != 0) {
+					this.CurrentBuilder.Append("i64 %_argc, i8** %argv");
+				}
+				this.CurrentBuilder.Append(")");
+				this.CurrentBuilder.AppendNewLine("ret i32 0");
+				this.CurrentBuilder.CloseIndent("}");
+			}
+			else {
 				this.HeaderBuilder.AppendNewLine("@" + Node.FuncName());
 				this.HeaderBuilder.Append(" = constant ");
 				this.HeaderBuilder.Append(this.GetTypeExpr(Node.ResolvedFuncType));
 				this.HeaderBuilder.Append(" ");
 				this.HeaderBuilder.Append(FuncName);
 			}
-			else {
-				this.CurrentBuilder.AppendNewLine("define i64 @main (i64 %argc, i8** %argv)");
-				this.CurrentBuilder.OpenIndent(" {");
-				this.CurrentBuilder.AppendNewLine("call ");
-				this.CurrentBuilder.Append(this.GetTypeExpr(Node.ResolvedFuncType));
-				this.CurrentBuilder.Append(" ");
-				this.CurrentBuilder.Append(FuncName);
-				if(Node.ResolvedFuncType.GetFuncParamSize() == 0) {
-					this.CurrentBuilder.Append(" ()");
-				}
-				else {
-					this.CurrentBuilder.Append(" (i64 %argc, i8** %argv)");
-				}
-				this.CurrentBuilder.AppendNewLine("ret i64 0");
-				this.CurrentBuilder.CloseIndent("}");
-			}
 		}
 
-		this.CurrentBuilder = this.CurrentBuilder.Pop();
+		if(Node.ParentFunctionNode != null || Node.ParentNode instanceof ZLetNode) {
+			this.CurrentBuilder = this.CurrentBuilder.Pop();
+		}
 		this.CurrentScope = PushedScope;
 		//Node.ParentFunctionNode != null
 		if(Node.FuncName() == null) {
