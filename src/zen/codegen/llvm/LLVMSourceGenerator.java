@@ -1291,8 +1291,8 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 		this.HeaderBuilder.Append(StringType);
 		this.HeaderBuilder.Append(" c\"" + StringValue + "\"");
 
-		this.DeclareExtrnalFunction("ZString_Create", "%ZString*", "(i8*, i64)");
-		this.CallExternalFunction("ZString_Create", "(i8* bitcast (" + StringType + "* " + StringConst + " to i8*), i64 " + (StrLen-1) + ")");
+		this.DeclareExtrnalFunction("ZString_Construct", "%ZString*", "(i8*, i64)");
+		this.CallExternalFunction("ZString_Construct", "(i8* bitcast (" + StringType + "* " + StringConst + " to i8*), i64 " + (StrLen-1) + ")");
 	}
 
 	@Override

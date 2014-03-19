@@ -13,23 +13,26 @@ clang -c ./libzen/lib/ZStdLib.c -o ZStdLib.o
 if [ $? -ne 0 ]; then
 	exit 1
 fi
-clang -c ./libzen/lib/ZString.c -o ZString.o -I$BOEHMDIR/include
+clang -c ./libzen/lib/ZArray.c -o ZArray.o -I$BOEHMDIR/include
 if [ $? -ne 0 ]; then
+	rm -f ZStdLib.o
 	exit 1
 fi
 llc $2 -filetype=obj -o _main.o
 if [ $? -ne 0 ]; then
+	rm -f ZStdLib.o ZArray.o
 	exit 1
 fi
-clang _main.o ZStdLib.o ZString.o -L$BOEHMDIR/lib -lgc -o a.out
+clang _main.o ZStdLib.o ZArray.o -L$BOEHMDIR/lib -lgc -o a.out
 if [ $? -ne 0 ]; then
+	rm -f ZStdLib.o ZArray.o _main.o
 	exit 1
 fi
 LD_LIBRARY_PATH=$BOEHMDIR/lib ./a.out
 if [ $? -ne 0 ]; then
-	rm -f ZString.o ZStdLib.o a.out _main.o
+	rm -f ZStdLib.o ZArray.o _main.o a.out
 	exit 1
 else
-	rm -f ZString.o ZStdLib.o a.out _main.o
+	rm -f ZStdLib.o ZArray.o _main.o a.out
 	exit 0
 fi
