@@ -25,23 +25,23 @@ asm macro startsWith "call i1 (%ZString*, %ZString*)* @ZString_StartsWith ($[0],
 asm macro endsWith "call i1 (%ZString*, %ZString*)* @ZString_EndsWith ($[0], $[1])" : Func<String,String,boolean>;
 
 // Array
-asm macro size "i64 (%ZArray*)* @ZObjArray_Length ($[0])" : Func<α[],int>;
-asm macro clear "void (%ZArray*, i64)* @ZObjArray_Clear ($[0], $[1])" : Func<α[],int,void>;
-asm macro add "void (%ZArray*, i8*)* @ZObjArray_Add ($[0], $[1])" : Func<α[],α,void>;
-asm macro add "void (%ZArray*, i64, i8*)* ZObjArray_Insert ($[0], $[1], $[2])" : Func<α[],int,α,void>;
+asm macro size "call i64 (%ZArray*)* @ZObjArray_Length ($[0])" : Func<α[],int>;
+asm macro clear "call void (%ZArray*, i64)* @ZObjArray_Clear ($[0], $[1])" : Func<α[],int,void>;
+asm macro add "call void (%ZArray*, i8*)* @ZObjArray_Add ($[0], $[1])" : Func<α[],α,void>;
+asm macro add "call void (%ZArray*, i64, i8*)* @ZObjArray_Insert ($[0], $[1], $[2])" : Func<α[],int,α,void>;
 
-asm macro size "i64 (%ZArray*)* @ZIntArray_Length ($[0])" : Func<int[],int>;
-asm macro clear "void (%ZArray*, i64)* @ZIntArray_Clear ($[0], $[1])" : Func<int[],int,void>;
-asm macro add "void (%ZArray*, i64)* @ZIntArray_Add ($[0], $[1])" : Func<int[],int,void>;
-asm macro add "void (%ZArray*, i64, i64)* ZIntArray_Insert ($[0], $[1], $[2])" : Func<int[],int,int,void>;
+asm macro size "call i64 (%ZArray*)* @ZIntArray_Length ($[0])" : Func<int[],int>;
+asm macro clear "call void (%ZArray*, i64)* @ZIntArray_Clear ($[0], $[1])" : Func<int[],int,void>;
+asm macro add "call void (%ZArray*, i64)* @ZIntArray_Add ($[0], $[1])" : Func<int[],int,void>;
+asm macro add "call void (%ZArray*, i64, i64)* @ZIntArray_Insert ($[0], $[1], $[2])" : Func<int[],int,int,void>;
 
-asm macro size "i64 (%ZArray*)* @ZFloatArray_Length ($[0])" : Func<float[],int>;
-asm macro clear "void (%ZArray*, i64)* @ZFloatArray_Clear ($[0], $[1])" : Func<float[],int,void>;
-asm macro add "void (%ZArray*, double)* @ZFloatArray_Add ($[0], $[1])" : Func<float[],float,void>;
-asm macro add "void (%ZArray*, i64, double)* ZFloatArray_Insert ($[0], $[1], $[2])" : Func<float[],int,float,void>;
+asm macro size "call i64 (%ZArray*)* @ZFloatArray_Length ($[0])" : Func<float[],int>;
+asm macro clear "call void (%ZArray*, i64)* @ZFloatArray_Clear ($[0], $[1])" : Func<float[],int,void>;
+asm macro add "call void (%ZArray*, double)* @ZFloatArray_Add ($[0], $[1])" : Func<float[],float,void>;
+asm macro add "call void (%ZArray*, i64, double)* @ZFloatArray_Insert ($[0], $[1], $[2])" : Func<float[],int,float,void>;
 
-asm macro size "i64 (%ZArray*)* @ZBooleanArray_Length ($[0])" : Func<boolean[],int>;
-asm macro clear "void (%ZArray*, i64)* @ZBooleanArray_Clear ($[0], $[1])" : Func<boolean[],int,void>;
-asm macro add "void (%ZArray*, i1)* @ZBooleanArray_Add ($[0], $[1])" : Func<boolean[],boolean,void>;
-asm macro add "void (%ZArray*, i64, i1)* ZBooleanArray_Insert ($[0], $[1], $[2])" : Func<boolean[],int,boolean,void>;
+asm macro size "call i64 (%ZArray*)* @ZBooleanArray_Length ($[0])" : Func<boolean[],int>;
+asm macro clear "call void (%ZArray*, i64)* @ZBooleanArray_Clear ($[0], $[1])" : Func<boolean[],int,void>;
+asm macro add "call void (%ZArray*, i1)* @ZBooleanArray_Add ($[0], $[1])" : Func<boolean[],boolean,void>;
+asm macro add "call void (%ZArray*, i64, i1)* Z@BooleanArray_Insert ($[0], $[1], $[2])" : Func<boolean[],int,boolean,void>;
 

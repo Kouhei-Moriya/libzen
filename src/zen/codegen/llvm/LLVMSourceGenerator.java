@@ -287,7 +287,9 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 			return this.GetTypeExpr(FuncType.GetReturnType())+ " " + this.GetFuncParamTypeExpr(FuncType) + "*";
 		}
 		else if(Type.IsArrayType()) {
-			return this.GetNativeTypeName(((ZGenericType)Type).ParamType.GetRealType()) + "*";
+			//this.GetNativeTypeName(((ZGenericType)Type).ParamType.GetRealType()) + "*";
+			this.DefineExternalStruct("ZArray");
+			return "%ZArray*";
 		}
 		else if(Type.IsStringType()) {
 			this.DefineExternalStruct("ZString");
@@ -557,32 +559,53 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 
 	@Override
 	public void VisitArrayLiteralNode(ZArrayLiteralNode Node) {
-		@Var StringBuilder sb = new StringBuilder();
-		@Var String GlobalConst = this.CreateTempGlobalSymbol();
-		sb.append(GlobalConst);
-		sb.append(" = private constant ");
-		int ArraySize = Node.GetListSize();
-		@Var String ElementType = this.GetTypeExpr(((ZGenericType)Node.Type).ParamType);
-		@Var String ArrayType = "[" + ArraySize + " x " + ElementType + "]";
-		sb.append(ArrayType);
-
-		sb.append(" [");
-		@Var int i = 0;
-		while(i < ArraySize) {
-			if (i > 0) {
-				sb.append(", ");
-			}
-			@Var ZNode SubNode = Node.GetListAt(i);
-			sb.append(this.GetTypeExpr(SubNode.Type));
-			sb.append(" ");
-			this.GenerateCode(null, SubNode);
-			sb.append(this.CurrentScope.PopValue());
-			i = i + 1;
+		@Var int ArraySize = Node.GetListSize();
+		@Var ZType ElementType = ((ZGenericType)Node.Type).ParamType;
+		@Var String ExtFuncName;
+		if(ElementType.IsIntType()) {
+			ExtFuncName = "ZIntArray_Construct";
 		}
-		sb.append("]");
-		this.HeaderBuilder.AppendNewLine(sb.toString());
+		else if(ElementType.IsFloatType()) {
+			ExtFuncName = "ZFloatArray_Construct";
+		}
+		else if(ElementType.IsBooleanType()) {
+			ExtFuncName = "ZBooleanArray_Construct";
+		}
+		else {
+			ExtFuncName = "ZObjArray_Construct";
+		}
+		this.DeclareExtrnalFunction(ExtFuncName, "%ZArray*", "(i8*, i64)");
 
-		this.CurrentScope.PushValue("bitcast (" + ArrayType + "* " + GlobalConst + " to " + this.GetTypeExpr(Node.Type) + ")");
+		if(ArraySize > 0) {
+			@Var StringBuilder sb = new StringBuilder();
+			@Var String GlobalConst = this.CreateTempGlobalSymbol();
+			sb.append(GlobalConst);
+			sb.append(" = private constant ");
+			@Var String ArrayType = "[" + ArraySize + " x " + this.GetTypeExpr(ElementType) + "]";
+			sb.append(ArrayType);
+
+			sb.append(" [");
+			@Var int i = 0;
+			while(i < ArraySize) {
+				if (i > 0) {
+					sb.append(", ");
+				}
+				@Var ZNode SubNode = Node.GetListAt(i);
+				sb.append(this.GetTypeExpr(SubNode.Type));
+				sb.append(" ");
+				this.GenerateCode(null, SubNode);
+				sb.append(this.CurrentScope.PopValue());
+				i = i + 1;
+			}
+			sb.append("]");
+			this.HeaderBuilder.AppendNewLine(sb.toString());
+
+			this.CallExternalFunction(ExtFuncName, "(i8* bitcast (" + ArrayType + "* " + GlobalConst + " to i8*), i64 " + ArraySize + ")");
+		}
+		else {
+			this.CallExternalFunction(ExtFuncName, "(i8* null, i64 " + ArraySize + ")");
+		}
+
 	}
 
 	@Override
@@ -710,8 +733,8 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 		this.GenerateCode(null, Node.RightNode());
 		@Var String Right = this.CurrentScope.PopValue();
 
-		@Var String TempVar = this.CurrentScope.CreateTempLocalSymbol();
 		if(this.IsPrimitiveType(Node.LeftNode().Type)) {
+			@Var String TempVar = this.CurrentScope.CreateTempLocalSymbol();
 			this.CurrentBuilder.AppendNewLine(TempVar);
 			this.CurrentBuilder.Append(" = ");
 			this.CurrentBuilder.Append(this.GetCompareOpCodeAndCondition(Node));
@@ -721,6 +744,13 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 			this.CurrentBuilder.Append(Left);
 			this.CurrentBuilder.Append(", ");
 			this.CurrentBuilder.Append(Right);
+			this.CurrentScope.PushValue(TempVar);
+		}
+		else if(Node.LeftNode().Type.IsStringType()) {
+			if(Node.SourceToken.EqualsText("==") && Node.RightNode().Type.IsStringType()) {
+				this.DeclareExtrnalFunction("ZString_EqualString", "i1", "(%ZString*, %ZString*)");
+				this.CallExternalFunction("ZString_EqualString", "(" + this.GetTypeExpr(Node.LeftNode().Type) + " " + Left + ", " + this.GetTypeExpr(Node.RightNode().Type) + " " + Right + ")");
+			}
 		}
 		else {
 			@Var String LeftAddress = this.CurrentScope.CreateTempLocalSymbol();
@@ -739,7 +769,8 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 			this.CurrentBuilder.Append(Right);
 			this.CurrentBuilder.Append(" to i64");
 
-			this.CurrentBuilder.AppendNewLine(TempVar);
+			@Var String Result = this.CurrentScope.CreateTempLocalSymbol();
+			this.CurrentBuilder.AppendNewLine(Result);
 			this.CurrentBuilder.Append(" = ");
 			this.CurrentBuilder.Append(this.GetCompareOpCodeAndCondition(Node));
 			this.CurrentBuilder.Append(" ");
@@ -748,8 +779,8 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 			this.CurrentBuilder.Append(LeftAddress);
 			this.CurrentBuilder.Append(", ");
 			this.CurrentBuilder.Append(RightAddress);
+			this.CurrentScope.PushValue(Result);
 		}
-		this.CurrentScope.PushValue(TempVar);
 	}
 
 	@Override
@@ -879,18 +910,34 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 
 	@Override
 	public void VisitGetIndexNode(ZGetIndexNode Node) {
-		this.GetArrayElementPointer(Node.RecvNode(), Node.IndexNode());
-		@Var String Element = this.CurrentScope.PopValue();
+		this.GenerateCode(null, Node.RecvNode());
+		@Var String Recv = this.CurrentScope.PopValue();
+		this.GenerateCode(null, Node.IndexNode());
+		@Var String Index = this.CurrentScope.PopValue();
 
-		@Var String TempVar = this.CurrentScope.CreateTempLocalSymbol();
-		this.CurrentBuilder.AppendNewLine(TempVar);
-		this.CurrentBuilder.Append(" = load ");
-		this.CurrentBuilder.Append(this.GetTypeExpr(Node.Type) + "*");
-		this.CurrentBuilder.Append(" ");
-		this.CurrentBuilder.Append(Element);
-		//@llvm.gcread
-
-		this.CurrentScope.PushValue(TempVar);
+		if(Node.RecvNode().Type.IsArrayType()) {
+			@Var ZType ElementType = ((ZGenericType)Node.RecvNode().Type).ParamType;
+			if(ElementType.IsIntType()) {
+				this.DeclareExtrnalFunction("ZIntArray_Get", "i64", "(%ZArray*, i64)");
+				this.CallExternalFunction("ZIntArray_Get", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ")");
+			}
+			else if(ElementType.IsFloatType()) {
+				this.DeclareExtrnalFunction("ZFloatArray_Get", "double", "(%ZArray*, i64)");
+				this.CallExternalFunction("ZFloatArray_Get", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ")");
+			}
+			else if(ElementType.IsBooleanType()) {
+				this.DeclareExtrnalFunction("ZBooleanArray_Get", "i1", "(%ZArray*, i64)");
+				this.CallExternalFunction("ZBooleanArray_Get", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ")");
+			}
+			else {
+				this.DeclareExtrnalFunction("ZObjArray_Get", "i8*", "(%ZArray*, i64)");
+				this.CallExternalFunction("ZObjArray_Get", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ")");
+			}
+		}
+		else if(Node.RecvNode().Type.IsStringType()) {
+			this.DeclareExtrnalFunction("ZString_Get", "%ZString*", "(%ZString*, i64)");
+			this.CallExternalFunction("ZString_Get", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ")");
+		}
 	}
 
 	@Override
@@ -1240,20 +1287,32 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 
 	@Override
 	public void VisitSetIndexNode(ZSetIndexNode Node) {
+		this.GenerateCode(null, Node.RecvNode());
+		@Var String Recv = this.CurrentScope.PopValue();
+		this.GenerateCode(null, Node.IndexNode());
+		@Var String Index = this.CurrentScope.PopValue();
 		this.GenerateCode(null, Node.ExprNode());
 		@Var String Expr = this.CurrentScope.PopValue();
-		this.GetArrayElementPointer(Node.RecvNode(), Node.IndexNode());
-		@Var String Element = this.CurrentScope.PopValue();
 
-		this.CurrentBuilder.AppendNewLine("store ");
-		this.CurrentBuilder.Append(this.GetTypeExpr(Node.ExprNode().Type));
-		this.CurrentBuilder.Append(" ");
-		this.CurrentBuilder.Append(Expr);
-		this.CurrentBuilder.Append(", ");
-		this.CurrentBuilder.Append(this.GetTypeExpr(Node.ExprNode().Type) + "*");
-		this.CurrentBuilder.Append(" ");
-		this.CurrentBuilder.Append(Element);
-		//@llvm.gcwrite
+		if(Node.RecvNode().Type.IsArrayType()) {
+			@Var ZType ElementType = ((ZGenericType)Node.RecvNode().Type).ParamType;
+			if(ElementType.IsIntType()) {
+				this.DeclareExtrnalFunction("ZIntArray_Set", "void", "(%ZArray*, i64, i64)");
+				this.CallExternalFunction("ZIntArray_Set", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ", " + this.GetTypeExpr(Node.ExprNode().Type) + " " + Expr + ")");
+			}
+			else if(ElementType.IsFloatType()) {
+				this.DeclareExtrnalFunction("ZFloatArray_Set", "void", "(%ZArray*, i64, double)");
+				this.CallExternalFunction("ZFloatArray_Set", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ", " + this.GetTypeExpr(Node.ExprNode().Type) + " " + Expr + ")");
+			}
+			else if(ElementType.IsBooleanType()) {
+				this.DeclareExtrnalFunction("ZBooleanArray_Set", "void", "(%ZArray*, i64, i1)");
+				this.CallExternalFunction("ZBooleanArray_Set", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ", " + this.GetTypeExpr(Node.ExprNode().Type) + " " + Expr + ")");
+			}
+			else {
+				this.DeclareExtrnalFunction("ZObjArray_Set", "void", "(%ZArray*, i64, i8*)");
+				this.CallExternalFunction("ZObjArray_Set", "(" + this.GetTypeExpr(Node.RecvNode().Type) + " " + Recv + ", " + this.GetTypeExpr(Node.IndexNode().Type) + " " + Index + ", i8* bitcast (" + this.GetTypeExpr(Node.ExprNode().Type) + " " + Expr + " to i8*))");
+			}
+		}
 	}
 
 	@Override
@@ -1563,25 +1622,6 @@ public class LLVMSourceGenerator extends ZSourceGenerator {
 		this.CurrentScope.PushValue(sb.toString());
 	}
 
-	private void GetArrayElementPointer(ZNode RecvNode, ZNode IndexNode) {
-		this.GenerateCode(null, RecvNode);
-		@Var String Recv = this.CurrentScope.PopValue();
-		this.GenerateCode(null, IndexNode);
-		@Var String Index = this.CurrentScope.PopValue();
-
-		@Var String TempVar = this.CurrentScope.CreateTempLocalSymbol();
-		this.CurrentBuilder.AppendNewLine(TempVar);
-		this.CurrentBuilder.Append(" = getelementptr ");
-		this.CurrentBuilder.Append(this.GetTypeExpr(RecvNode.Type));
-		this.CurrentBuilder.Append(" ");
-		this.CurrentBuilder.Append(Recv);
-		this.CurrentBuilder.Append(", ");
-		this.CurrentBuilder.Append(this.GetTypeExpr(IndexNode.Type));
-		this.CurrentBuilder.Append(" ");
-		this.CurrentBuilder.Append(Index);
-
-		this.CurrentScope.PushValue(TempVar);
-	}
 	private void GetObjectElementPointer(ZNode RecvNode, String FieldName) {
 		this.GenerateCode(null, RecvNode);
 		@Var String Recv = this.CurrentScope.PopValue();

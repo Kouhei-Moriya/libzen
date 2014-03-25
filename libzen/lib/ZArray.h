@@ -15,7 +15,7 @@ ZArray *ZArray_new(size_t bufsize);
 ZArray *ZArray_Clone(ZArray *ZArr);
 //destructive
 void ZArray_EnsureSize(ZArray *ZArr, size_t bufsize);
-ZArray *ZArray_Construct(const void *arr, size_t len, size_t elmsize);
+ZArray *ZArray_Construct(const void *arr, int64_t len, size_t elmsize);
 int64_t ZArray_Length(ZArray *ZArr, size_t elmsize);
 void *ZArray_Get(ZArray *ZArr, int64_t index, size_t elmsize);
 //destructive
@@ -40,7 +40,7 @@ ZArray *ZArray_SubArray(ZArray *ZArr, int64_t startindex, int64_t endindex, size
 // -----------
 //  int Array
 // -----------
-ZArray *ZIntArray_Construct(const void *arr, size_t len);
+ZArray *ZIntArray_Construct(const void *arr, int64_t len);
 int64_t ZIntArray_Length(ZArray *ZArr);
 int64_t ZIntArray_Get(ZArray *ZArr, int64_t index);
 //destructive
@@ -57,7 +57,7 @@ int64_t ZIntArray_IndexOf(ZArray *ZArr, int64_t searchvalue);
 // -------------
 //  float Array
 // -------------
-ZArray *ZFloatArray_Construct(const void *arr, size_t len);
+ZArray *ZFloatArray_Construct(const void *arr, int64_t len);
 int64_t ZFloatArray_Length(ZArray *ZArr);
 double ZFloatArray_Get(ZArray *ZArr, int64_t index);
 //destructive
@@ -74,7 +74,7 @@ int64_t ZFloatArray_IndexOf(ZArray *ZArr, double searchvalue);
 // ---------------
 //  boolean Array
 // ---------------
-ZArray *ZBooleanArray_Construct(const void *arr, size_t len);
+ZArray *ZBooleanArray_Construct(const void *arr, int64_t len);
 int64_t ZBooleanArray_Length(ZArray *ZArr);
 char ZBooleanArray_Get(ZArray *ZArr, int64_t index);
 //destructive
@@ -91,7 +91,7 @@ int64_t ZBooleanArray_IndexOf(ZArray *ZArr, char searchvalue);
 // --------------
 //  Object Array
 // --------------
-ZArray *ZObjArray_Construct(const void *arr, size_t len);
+ZArray *ZObjArray_Construct(const void *arr, int64_t len);
 int64_t ZObjArray_Length(ZArray *ZArr);
 void *ZObjArray_Get(ZArray *ZArr, int64_t index);
 //destructive
@@ -109,7 +109,7 @@ int64_t ZObjArray_IndexOf(ZArray *ZArr, void *SearchObj);
 //  String
 // --------
 typedef ZArray ZString;
-ZString *ZString_Construct(const char *arr, size_t len);
+ZString *ZString_Construct(const char *arr, int64_t len);
 int64_t ZString_StrLen(ZString *ZStr);
 ZString *ZString_Get(ZString *ZStr, int64_t index);
 int64_t ZString_IndexOf_withIndex(ZString *ZStr, int64_t startindex, ZString *SearchStr);

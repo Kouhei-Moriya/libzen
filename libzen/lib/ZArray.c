@@ -56,8 +56,8 @@ void ZArray_EnsureSize(ZArray *ZArr, size_t bufsize) {
 	return;
 }
 
-ZArray *ZArray_Construct(const void *arr, size_t len, size_t elmsize) {
-	size_t bufsize = elmsize * len;
+ZArray *ZArray_Construct(const void *arr, int64_t len, size_t elmsize) {
+	size_t bufsize = elmsize * (size_t)len;
 	ZArray *ZArr = ZArray_new(bufsize);
 	memcpy(ZArr->elements, arr, bufsize);
 	ZArr->len = (uint64_t)bufsize;
@@ -224,7 +224,7 @@ ZArray *ZArray_SubArray(ZArray *ZArr, int64_t startindex, int64_t endindex, size
 // -----------
 //  int Array
 // -----------
-ZArray *ZIntArray_Construct(const void *arr, size_t len) {
+ZArray *ZIntArray_Construct(const void *arr, int64_t len) {
 	return ZArray_Construct(arr, len, SIZE_I64);
 }
 int64_t ZIntArray_Length(ZArray *ZArr) {
@@ -261,7 +261,7 @@ int64_t ZIntArray_IndexOf(ZArray *ZArr, int64_t searchvalue) {
 // -------------
 //  float Array
 // -------------
-ZArray *ZFloatArray_Construct(const void *arr, size_t len) {
+ZArray *ZFloatArray_Construct(const void *arr, int64_t len) {
 	return ZArray_Construct(arr, len, SIZE_DOUBLE);
 }
 int64_t ZFloatArray_Length(ZArray *ZArr) {
@@ -298,7 +298,7 @@ int64_t ZFloatArray_IndexOf(ZArray *ZArr, double searchvalue) {
 // ---------------
 //  boolean Array
 // ---------------
-ZArray *ZBooleanArray_Construct(const void *arr, size_t len) {
+ZArray *ZBooleanArray_Construct(const void *arr, int64_t len) {
 	return ZArray_Construct(arr, len, SIZE_BOOL);
 }
 int64_t ZBooleanArray_Length(ZArray *ZArr) {
@@ -335,7 +335,7 @@ int64_t ZBooleanArray_IndexOf(ZArray *ZArr, char searchvalue) {
 // --------------
 //  Object Array
 // --------------
-ZArray *ZObjArray_Construct(const void *arr, size_t len) {
+ZArray *ZObjArray_Construct(const void *arr, int64_t len) {
 	return ZArray_Construct(arr, len, SIZE_POINTER);
 }
 int64_t ZObjArray_Length(ZArray *ZArr) {
@@ -372,7 +372,7 @@ int64_t ZObjArray_IndexOf(ZArray *ZArr, void *SearchObj) {
 // --------
 //  String
 // --------
-ZString *ZString_Construct(const char *arr, size_t len) {
+ZString *ZString_Construct(const char *arr, int64_t len) {
 	return (ZString *)ZArray_Construct((const void *)arr, len, SIZE_CHAR);
 }
 int64_t ZString_StrLen(ZString *ZStr) {
